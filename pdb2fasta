@@ -39,6 +39,19 @@ def print_header():
     print "#                PDB2FASTA                  #"
     print "#############################################"
 
+
+
+def get_legitimate_cols(collist):
+
+    sub=0
+
+    for i in collist:
+        if i == "\n" or i == "\t":
+            sub=sub+1
+
+    return len(collist)-sub
+
+                        
            
 def read_file(pdbfilename):                                                                                                                                                                                                        
     """ Reads a file into a content list line by line                                                                                                                                                                                    
@@ -77,11 +90,15 @@ def read_residues(content):
 
     for line in content:
         if filter(None, line.split(" "))[0].upper() == "ATOM":
-            cols = len(filter(None, line.split(" "))) - 1
+            cols = get_legitimate_cols(filter(None, line.split(" ")))
             break
+        
 
+    # normal PDB files
     if cols == 12:
         resid_num = 5
+
+    # PDB files from trjconf for example
     if cols == 9:
         resid_num = 4
 
@@ -176,7 +193,9 @@ if __name__=="__main__":
         filename=args.chain
         content = read_file(filename)
         residues = read_residues(content)
-        cols = len(residues[0][0])-1
+
+        # determine the number of real columns in the "ATOMS" lines of the PDB file
+        cols = get_legitimate_cols(residues[0][0])
         
         if cols == 12:
             chain_num = 4
