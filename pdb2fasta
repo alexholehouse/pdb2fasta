@@ -1,0 +1,230 @@
+#!/usr/bin/python
+
+## Alex Holehouse
+## Pappulab
+## April 2014
+##
+## pdb2fasta
+##
+## Converts a PDB file 
+##
+##
+
+import sys
+
+AADICT = {"ALA":"A", 
+          "CYS":"C", 
+          "ASP":"D", 
+          "GLU":"E",
+          "PHE":"F",
+          "GLY":"G",
+          "HIS":"H",
+          "ILE":"I",
+          "LYS":"K",
+          "LEU":"L",
+          "MET":"M",
+          "ASN":"N",
+          "PRO":"P",
+          "GLN":"Q",
+          "ARG":"R",
+          "SER":"S",
+          "THR":"T",
+          "VAL":"V",
+          "TRP":"W",
+          "TYR":"Y"}
+          
+           
+def read_file(pdbfilename):                                                                                                                                                                                                        
+    """ Reads a file into a content list line by line                                                                                                                                                                                    
+    and returns that list
+    """
+    with open(pdbfilename) as f:
+        content = f.readlines()
+
+    return content
+
+def three2one(aa):
+    return AADICT[aa.upper()]
+    
+
+def read_residues(content):
+    
+    """ Function to read the content list and extract residues into
+    a residue list. Note this uses lists and not dictionaries
+    so if a PDB has multiple residues with the same number (but
+    , for example, different chains) we don't overwrite residues.
+    
+    This the get_residue function is a search operation instead of
+    a dictionary lookup, but builds in robustness and redunancy which
+    is good! 
+    """
+        
+    residues = []
+
+    # scan through the content and pull residues
+    # into a list
+    allres = []
+    temp_res =[]
+
+
+    # determine number of columns being used
+
+    for line in content:
+        if filter(None, line.split(" "))[0].upper() == "ATOM":
+            cols = len(filter(None, line.split(" "))) - 1
+            break
+
+    if cols == 12:
+        resid_num = 5
+    if cols == 9:
+        resid_num = 4
+
+    first=True
+
+
+    for line in content:
+        
+        # if the current line is an atom...
+        if filter(None, line.split(" "))[0].upper() == "ATOM":            
+
+            # if this is the first time use this to define how the numbering works out
+            
+            if first:
+                first=False
+                current_res=int(filter(None, line.split(" "))[resid_num])
+                temp_res.append(filter(None, line.split(" ")))
+                continue
+            
+
+            # if the current atom comes a residue equal to the
+            # current_res then append this atom to the temp_res
+            # list (think of the temp_res list as a list which holds
+            # each residue as it's built                                
+
+            if current_res == int(filter(None, line.split(" "))[resid_num]):
+                temp_res.append(filter(None, line.split(" ")))
+
+                # If the current_res+1 is equal to the residue of the
+                # line's atom we've 
+            elif current_res+1 == int(filter(None, line.split(" "))[resid_num]):
+                current_res=current_res+1                    
+                if len(temp_res) > 0: 
+                    allres.append(temp_res)
+                    temp_res = []
+                    temp_res.append(filter(None, line.split(" ")))                
+                else:
+                    print "ERROR"
+                    raise Exception                
+
+        if filter(None, line.split(" "))[0].upper() == "TER":
+            first=True
+            
+
+    return allres
+
+
+## ===================================================================================================
+##                              Main Script - hold onto your hat!
+## ===================================================================================================
+
+if __name__=="__main__":
+    import argparse 
+    import sys
+    from numpy import std, mean
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--file","-f", help="PDB file") 
+    parser.add_argument("--chain","-c", help="Chain in PDB file (optional)") 
+    parser.add_argument("--three","-t", help="Print three letter codes (optional)",action='store_true', default=False)
+
+    args = parser.parse_args()
+
+    if args.file:
+        filename=args.file        
+    elif args.chain:
+        print "In chain mode - counting number of chains"
+        filename=args.chain
+        content = read_file(filename)
+        residues = read_residues(content)
+        cols = len(residues[0][0])-1
+        
+        if cols == 12:
+            chain_num = 4
+        else:
+            print "Unable to select a specific chain"  
+        
+        chaincount=0
+        chaincurrent="-"
+        chainlist = []
+        for i in residues:
+            atom = i[0]
+            if atom[chain_num] == chaincurrent:
+                pass
+            else:
+                
+                chaincount=chaincount+1
+                chaincurrent=atom[chain_num]
+                chainlist.append(chaincurrent)
+        print "Number of chains: " + str(chaincount)
+        print "Chains are: " + str(chainlist)
+        exit(0)
+            
+            
+    else:
+        
+        print "[FATAL ERROR]: Please provide a filename (-f 'filename')"
+        exit(1)
+
+
+    content = read_file(filename)
+
+    residues = read_residues(content)
+
+    cols = len(residues[0][0])-1
+    resname_num = 3    
+
+    if args.chain:        
+        
+        if cols == 12:
+            chain_num = 4
+        else:
+            print "Unable to select a specific chain"
+
+    
+        count=0
+        for res in residues:
+            atom = res[0]
+            if atom[chain_num] == args.chain:
+                if count%50 == 0:
+                    print ""
+                
+                if args.three:
+                    sys.stdout.write(atom[resname_num])
+                    sys.stdout.write(" ")
+                else:
+                    if count%10 == 0:
+                        sys.stdout.write(" ")
+
+                    sys.stdout.write(three2one(atom[resname_num]))
+                count=count+1
+
+        print ""
+    else:        
+
+        count=0
+        for res in residues:
+            atom = res[0]
+            if count%50 == 0:
+                print ""
+
+            if args.three:
+                sys.stdout.write(atom[resname_num])
+            else:
+                if count%10 == 0:
+                    sys.stdout.write(" ")
+                sys.stdout.write(three2one(atom[resname_num]))
+            count=count+1
+        print ""
+
+  
