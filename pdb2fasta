@@ -10,7 +10,7 @@
 ##
 ##
 
-import sys
+VERSION=0.1
 
 AADICT = {"ALA":"A", 
           "CYS":"C", 
@@ -33,6 +33,12 @@ AADICT = {"ALA":"A",
           "TRP":"W",
           "TYR":"Y"}
           
+
+def print_header():
+    print "#############################################"
+    print "#                PDB2FASTA                  #"
+    print "#############################################"
+
            
 def read_file(pdbfilename):                                                                                                                                                                                                        
     """ Reads a file into a content list line by line                                                                                                                                                                                    
@@ -116,7 +122,10 @@ def read_residues(content):
                     print "ERROR"
                     raise Exception                
 
-        if filter(None, line.split(" "))[0].upper() == "TER":
+                
+        if filter(None, line.split(" "))[0].upper().strip() == "TER":
+            allres.append(temp_res)
+            temp_res = []
             first=True
             
 
@@ -133,12 +142,32 @@ if __name__=="__main__":
     from numpy import std, mean
 
     parser = argparse.ArgumentParser()
-
     parser.add_argument("--file","-f", help="PDB file") 
     parser.add_argument("--chain","-c", help="Chain in PDB file (optional)") 
     parser.add_argument("--three","-t", help="Print three letter codes (optional)",action='store_true', default=False)
+    parser.add_argument("--usage","-u", help="Print help and exit",action='store_true', default=False)
+    parser.add_argument("--version","-v", help="Print version and exit",action='store_true', default=False)
 
     args = parser.parse_args()
+
+    if args.usage:
+        print_header()
+
+        print " Usage:"
+        print " pdb2fasta -f <pdb file> # print protein sequence from PDB file"
+        print " pdb2fasta -c <pdb file> # print number and names of chains in file"
+        print " pdb2fasta -f <pdb file> -c <chain> # print protein sequence from chain <chain> in PDB file"
+        print " pdb2fasta -f <pdb file> [-c <chain>] -t # print three letter code instead of one letter code"
+        print ""
+        print " For additional help or bug reports see https://github.com/alexholehouse/pdb2fasta"
+        print " Version " + str(VERSION)
+        exit(0)
+
+    if args.version:
+        print " Version " + str(VERSION)
+        exit(0)
+        
+    print_header()
 
     if args.file:
         filename=args.file        
@@ -196,17 +225,20 @@ if __name__=="__main__":
         for res in residues:
             atom = res[0]
             if atom[chain_num] == args.chain:
-                if count%50 == 0:
-                    print ""
                 
                 if args.three:
+                    if count%20 == 0:
+                        print ""
+
                     sys.stdout.write(atom[resname_num])
                     sys.stdout.write(" ")
                 else:
-                    if count%10 == 0:
+                    if count%50 == 0:
+                        print ""
+                    sys.stdout.write(three2one(atom[resname_num]))
+                    if count%10 == 0 and not count%50 == 0 and not count == 0:
                         sys.stdout.write(" ")
 
-                    sys.stdout.write(three2one(atom[resname_num]))
                 count=count+1
 
         print ""
@@ -215,15 +247,21 @@ if __name__=="__main__":
         count=0
         for res in residues:
             atom = res[0]
-            if count%50 == 0:
-                print ""
 
             if args.three:
+                if count%20 == 0:
+                    print ""
+
                 sys.stdout.write(atom[resname_num])
+                sys.stdout.write(" ")
             else:
-                if count%10 == 0:
-                    sys.stdout.write(" ")
+                if count%50 == 0:
+                    print ""
+
                 sys.stdout.write(three2one(atom[resname_num]))
+                if count%10 == 0 and not count%50 == 0 and not count == 0:
+                    sys.stdout.write(" ")
+
             count=count+1
         print ""
 
