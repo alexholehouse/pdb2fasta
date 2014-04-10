@@ -19,6 +19,8 @@ AADICT = {"ALA":"A",
           "PHE":"F",
           "GLY":"G",
           "HIS":"H",
+          "HID":"H",
+          "HIE":"H",
           "ILE":"I",
           "LYS":"K",
           "LEU":"L",
@@ -31,7 +33,9 @@ AADICT = {"ALA":"A",
           "THR":"T",
           "VAL":"V",
           "TRP":"W",
-          "TYR":"Y"}
+          "TYR":"Y",
+          "ACE":"+",
+          "NME":"-"}
           
 
 def print_header():
@@ -41,7 +45,47 @@ def print_header():
 
 
 
-def get_legitimate_cols(collist):
+def get_col_indices(collist):
+
+    # Types of collumn setups
+    # cols == 10
+    #   COL=[ATOM]
+    #   COL=[1]
+    #   COL=[CH3]
+    #   COL=[ACE]
+    #   COL=[1]
+    #   COL=[33.000]
+    #   COL=[29.720]
+    #   COL=[36.600]
+    #   COL=[1.00]
+    #   COL=[1.00]
+    #
+    # cols == 11
+    #   COL=[ATOM]
+    #   COL=[1]
+    #   COL=[CH3]
+    #   COL=[ACE]
+    #   COL=[A] *****CHAIN******
+    #   COL=[1]
+    #   COL=[0.000]
+    #   COL=[0.000]
+    #   COL=[0.000]
+    #   COL=[1.00]
+    #   COL=[0.00]
+    # cols == 12
+    #   COL=[ATOM]
+    #   COL=[1]
+    #   COL=[N]
+    #   COL=[LYS]
+    #   COL=[A] *****CHAIN******
+    #   COL=[1]
+    #   COL=[35.365]
+    #   COL=[22.342]
+    #   COL=[-11.980]
+    #   COL=[1.00]
+    #   COL=[22.28]
+    #   COL=[N] *******ATOM&&&&&&&
+
 
     sub=0
 
@@ -49,7 +93,17 @@ def get_legitimate_cols(collist):
         if i == "\n" or i == "\t":
             sub=sub+1
 
-    return len(collist)-sub
+    num_cols = len(collist)-sub
+    
+    if num_cols == 11 or num_cols == 12:
+        return (5,4)
+    if num_cols == 10:
+        return (4,-1)
+
+    print "Unexpected number of columns in PDB file - is this valid?"
+    raise Exception
+    
+
 
                         
            
@@ -86,24 +140,21 @@ def read_residues(content):
     temp_res =[]
 
 
-    # determine number of columns being used
+    # determine number of columns being used\
+
+    
+    
 
     for line in content:
         if filter(None, line.split(" "))[0].upper() == "ATOM":
-            cols = get_legitimate_cols(filter(None, line.split(" ")))
+            atomline= filter(None, line.split(" "))
+            
+            (resid_num,chain_num) = get_col_indices(atomline)
             break
         
-
-    # normal PDB files
-    if cols == 12:
-        resid_num = 5
-
-    # PDB files from trjconf for example
-    if cols == 9:
-        resid_num = 4
-
     first=True
-
+    
+    #print "cols is " + str(cols)
 
     for line in content:
         
@@ -195,12 +246,10 @@ if __name__=="__main__":
         residues = read_residues(content)
 
         # determine the number of real columns in the "ATOMS" lines of the PDB file
-        cols = get_legitimate_cols(residues[0][0])
+        (resid_num,chain_num) = get_col_indices(residues[0][0])
         
-        if cols == 12:
-            chain_num = 4
-        else:
-            print "Unable to select a specific chain"  
+        if chain_num == -1:
+            print "Unable to get chain number from PDB file"
         
         chaincount=0
         chaincurrent="-"
@@ -229,16 +278,15 @@ if __name__=="__main__":
 
     residues = read_residues(content)
 
-    cols = len(residues[0][0])-1
-    resname_num = 3    
+    (resid_num,chain_num) = get_col_indices(residues[0][0])
+    resname_num = 3 # note this is always three irrespective of PDB type
+
+    
 
     if args.chain:        
-        
-        if cols == 12:
-            chain_num = 4
-        else:
-            print "Unable to select a specific chain"
 
+        if chain_num == -1:
+            print "Unable to get chain number from PDB file"
     
         count=0
         for res in residues:
