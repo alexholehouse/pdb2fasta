@@ -35,7 +35,7 @@ AADICT = {"ALA":"A",
           "TRP":"W",
           "TYR":"Y",
           "ACE":"+",
-          "NME":"-"}
+          "NAC":"-"}
           
 
 def print_header():
