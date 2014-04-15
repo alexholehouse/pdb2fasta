@@ -35,13 +35,15 @@ AADICT = {"ALA":"A",
           "TRP":"W",
           "TYR":"Y",
           "ACE":"+",
-          "NAC":"-"}
+          "NAC":"-",
+	  "NME":"-"}
           
 
 def print_header():
     print "#############################################"
     print "#                PDB2FASTA                  #"
     print "#############################################"
+
 
 
 
@@ -139,12 +141,7 @@ def read_residues(content):
     allres = []
     temp_res =[]
 
-
-    # determine number of columns being used\
-
-    
-    
-
+    # determine number of columns being used
     for line in content:
         if filter(None, line.split(" "))[0].upper() == "ATOM":
             atomline= filter(None, line.split(" "))
@@ -154,8 +151,6 @@ def read_residues(content):
         
     first=True
     
-    #print "cols is " + str(cols)
-
     for line in content:
         
         # if the current line is an atom...
@@ -215,6 +210,7 @@ if __name__=="__main__":
     parser.add_argument("--three","-t", help="Print three letter codes (optional)",action='store_true', default=False)
     parser.add_argument("--usage","-u", help="Print help and exit",action='store_true', default=False)
     parser.add_argument("--version","-v", help="Print version and exit",action='store_true', default=False)
+    parser.add_argument("--absinth","-a",  help="Print sequence in CAMPARI sequence mode",action='store_true', default=False)
 
     args = parser.parse_args()
 
@@ -226,6 +222,7 @@ if __name__=="__main__":
         print " pdb2fasta -c <pdb file> # print number and names of chains in file"
         print " pdb2fasta -f <pdb file> -c <chain> # print protein sequence from chain <chain> in PDB file"
         print " pdb2fasta -f <pdb file> [-c <chain>] -t # print three letter code instead of one letter code"
+        print " pdb2fasta -f <pdb file> [-c <chain>] -absinth # print a sequence using CAMPARI mode"
         print ""
         print " For additional help or bug reports see https://github.com/alexholehouse/pdb2fasta"
         print " Version " + str(VERSION)
@@ -233,9 +230,7 @@ if __name__=="__main__":
 
     if args.version:
         print " Version " + str(VERSION)
-        exit(0)
-        
-    print_header()
+        exit(0)        
 
     if args.file:
         filename=args.file        
@@ -293,14 +288,17 @@ if __name__=="__main__":
             atom = res[0]
             if atom[chain_num] == args.chain:
                 
-                if args.three:
-                    if count%20 == 0:
+                if args.three and not args.absinth:
+                    if count%20 == 0 and not count == 0:
                         print ""
 
                     sys.stdout.write(atom[resname_num])
                     sys.stdout.write(" ")
+                elif args.absinth:
+                    sys.stdout.write(atom[resname_num])
+                    sys.stdout.write("\n")
                 else:
-                    if count%50 == 0:
+                    if count%50 == 0 and not count == 0:
                         print ""
                     sys.stdout.write(three2one(atom[resname_num]))
                     if count%10 == 0 and not count%50 == 0 and not count == 0:
@@ -308,21 +306,27 @@ if __name__=="__main__":
 
                 count=count+1
 
-        print ""
+        if args.absinth:
+            sys.stdout.write("END\n")
+        else:
+            print ""
     else:        
 
         count=0
         for res in residues:
             atom = res[0]
 
-            if args.three:
-                if count%20 == 0:
+            if args.three and not args.absinth:
+                if count%20 == 0 and not count == 0:
                     print ""
 
                 sys.stdout.write(atom[resname_num])
                 sys.stdout.write(" ")
+            elif args.absinth:
+                sys.stdout.write(atom[resname_num])
+                sys.stdout.write("\n")
             else:
-                if count%50 == 0:
+                if count%50 == 0 and not count == 0:
                     print ""
 
                 sys.stdout.write(three2one(atom[resname_num]))
@@ -330,6 +334,9 @@ if __name__=="__main__":
                     sys.stdout.write(" ")
 
             count=count+1
-        print ""
+        if args.absinth:
+            sys.stdout.write("END\n")
+        else:
+            print ""
 
   
