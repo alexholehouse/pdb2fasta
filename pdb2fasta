@@ -361,7 +361,7 @@ if __name__=="__main__":
                 else:
                     if count%50 == 0 and not count == 0:
                         print ""
-                    sys.stdout.write(outchar=(three2one(outchar)))
+                    sys.stdout.write(three2one(outchar))
                     if count%10 == 0 and not count%50 == 0 and not count == 0:
                         sys.stdout.write(" ")
 
