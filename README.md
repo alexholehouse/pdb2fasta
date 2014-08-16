@@ -1,7 +1,9 @@
 pdb2fasta
 ==========
 
-Take a PDB file and spit out protein sequence in 3 or 1 letter format
+Current version 0.2
+
+Take a PDB file and spit out protein sequence in 3 or 1 letter format.
 
 Usage
 ---------
@@ -12,9 +14,11 @@ Usage
 
 `-f`  PDB file (required argument)
 
-`-c`  Chain in PDB file to print (useful if a PDB file contains several proteins
+`-c`  [optional] Defines the chain in PDB file to print (useful if a PDB file contains several proteins
 
-`-t`  Print three letter code instead of 1 letter code
+`-t`  [optional] Print three letter code instead of 1 letter code
+
+`-a`  [optional] Print the output in the CAMPARI sequence file format
 
 Examples
 ----------
@@ -30,6 +34,10 @@ Print the number and names of the chains in the PDB file
 Prints the amino acid residues in chain A in the PDB file
 
     pdb2fasta -f file.pdb -c A 
+
+Print the amino acid sequence, ignoring non-standard amino acids (DANGEROUS)
+
+    pdb2fasta -f file.pdb 2>/dev/null
     
     
 About
