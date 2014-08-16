@@ -1,0 +1,8 @@
+# V 0.2 update
+
+- Fixed a couple of minor bugs
+- Added support for CAMPARI's 'dash' (-) seperated PDB columns
+- Changed default behaviour such that non-standard AA are skipped and printed to STDERR. This means you can parse a PDB
+  file which has other atoms in it and they'll be skipped. Obviously the default is that if you run this the errors appear
+  in the terminal because STDERR and STDOUT both pipe to the terminal BUT it means if you know you can ignore such amino acids
+  you can pipe STDERR to /dev/null and get on with you life.

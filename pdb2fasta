@@ -10,7 +10,10 @@
 ##
 ##
 
-VERSION=0.1
+def pdb2fastaException(Exception):
+    pass
+
+VERSION=0.2
 
 AADICT = {"ALA":"A", 
           "CYS":"C", 
@@ -88,15 +91,15 @@ def get_col_indices(collist):
     #   COL=[22.28]
     #   COL=[N] *******ATOM&&&&&&&
 
-
     sub=0
 
     for i in collist:
+        # shouldn't find any '\t' give we split by whitespace...
         if i == "\n" or i == "\t":
             sub=sub+1
 
     num_cols = len(collist)-sub
-    
+
     if num_cols == 11 or num_cols == 12:
         return (5,4)
     if num_cols == 10:
@@ -107,7 +110,17 @@ def get_col_indices(collist):
     
 
 
-                        
+                     
+def validateAA(AA):
+    """
+    Returns AA if a valid 3 letter amino acid
+    else returns NULL
+    """
+    if AA in AADICT.keys():
+        return AA
+    else:
+        return "NULL"
+    
            
 def read_file(pdbfilename):                                                                                                                                                                                                        
     """ Reads a file into a content list line by line                                                                                                                                                                                    
@@ -119,7 +132,15 @@ def read_file(pdbfilename):
     return content
 
 def three2one(aa):
-    return AADICT[aa.upper()]
+    try:
+        return AADICT[aa.upper()]
+    except KeyError:
+        sys.stderr.write("Found non-amino acid residue in PDB file... [" + str(aa) + "]\n")
+        return "NULL"
+
+
+def splitPDBLine(line):
+    return line.replace('-', ' ').split()
     
 
 def read_residues(content):
@@ -143,8 +164,14 @@ def read_residues(content):
 
     # determine number of columns being used
     for line in content:
+
+        # first line where the column read 'ATOM'
         if filter(None, line.split(" "))[0].upper() == "ATOM":
-            atomline= filter(None, line.split(" "))
+            
+            # note we replace - with ' '  because CAMPARI sometimes
+            # uses - to seperate columns (seriously)
+            atomline = splitPDBLine(line)
+
             
             (resid_num,chain_num) = get_col_indices(atomline)
             break
@@ -152,44 +179,64 @@ def read_residues(content):
     first=True
     
     for line in content:
+
+        linelist = splitPDBLine(line)
         
         # if the current line is an atom...
-        if filter(None, line.split(" "))[0].upper() == "ATOM":            
+        if linelist[0].upper() == "ATOM":            
 
-            # if this is the first time use this to define how the numbering works out
-            
+            # if this is the first time use this to define how the numbering works out            
             if first:
                 first=False
-                current_res=int(filter(None, line.split(" "))[resid_num])
-                temp_res.append(filter(None, line.split(" ")))
+                                
+                # define the where we start residue numbering from
+                current_res=int(linelist[resid_num])
+                
+                temp_res.append(linelist)
+                # skip  to the next line
                 continue
             
 
+
+            # linelist is the parsed PDB line split into its constitutive columns
+            
+
+
+            # CASE 1
             # if the current atom comes a residue equal to the
             # current_res then append this atom to the temp_res
-            # list (think of the temp_res list as a list which holds
-            # each residue as it's built                                
+            # list (think of the temp_res list as a list which holds a residue's
+            # constitutive atoms  residue as it's built     
 
-            if current_res == int(filter(None, line.split(" "))[resid_num]):
-                temp_res.append(filter(None, line.split(" ")))
+            if current_res == int(linelist[resid_num]):
+                temp_res.append(linelist)
 
-                # If the current_res+1 is equal to the residue of the
-                # line's atom we've 
-            elif current_res+1 == int(filter(None, line.split(" "))[resid_num]):
-                current_res=current_res+1                    
+            # CASE 2
+            # If the current_res+1 is equal to the residue of the
+            # line's atom we've move onto the next residue
+            elif current_res+1 == int(linelist[resid_num]):
+                                
+                # increment the current residue counter
+                current_res=current_res+1              
+
+                # add the list of atoms to the allres list
                 if len(temp_res) > 0: 
                     allres.append(temp_res)
                     temp_res = []
-                    temp_res.append(filter(None, line.split(" ")))                
+                    temp_res.append(linelist)
                 else:
                     print "ERROR"
-                    raise Exception                
+                    raise pdb2fastaException("Found a residue with no atoms? LINE: " + line)
 
                 
-        if filter(None, line.split(" "))[0].upper().strip() == "TER":
+        if linelist[0].upper().strip() == "TER":
             allres.append(temp_res)
             temp_res = []
             first=True
+
+        if linelist[0].upper().strip() == "END":
+            allres.append(temp_res)
+            temp_res = []
             
 
     return allres
@@ -287,25 +334,40 @@ if __name__=="__main__":
         for res in residues:
             atom = res[0]
             if atom[chain_num] == args.chain:
+
+                # outchar = 3 letter AA code if a valid AA
+                # or is equal to "NULL"
+                outchar = validateAA(atom[resname_num])
                 
-                if args.three and not args.absinth:
+                # if NULL continue
+                if outchar == "NULL":
+                    sys.stderr.write("Found non-amino acid residue in PDB file... [" + str(atom[resname_num]) + "]\n")
+                    continue
+                                
+                # if want 3 letter output but NOT absinth format
+                if args.three and not args.absinth:                    
                     if count%20 == 0 and not count == 0:
                         print ""
 
-                    sys.stdout.write(atom[resname_num])
+                    sys.stdout.write(outchar)
                     sys.stdout.write(" ")
+                    
+                # if want absinth output format
                 elif args.absinth:
-                    sys.stdout.write(atom[resname_num])
+                    sys.stdout.write(outchar)
                     sys.stdout.write("\n")
+
+                # want standard 1 letter FASTA format
                 else:
                     if count%50 == 0 and not count == 0:
                         print ""
-                    sys.stdout.write(three2one(atom[resname_num]))
+                    sys.stdout.write(outchar=(three2one(outchar)))
                     if count%10 == 0 and not count%50 == 0 and not count == 0:
                         sys.stdout.write(" ")
 
                 count=count+1
 
+        # if absinth output end with END string
         if args.absinth:
             sys.stdout.write("END\n")
         else:
@@ -316,20 +378,30 @@ if __name__=="__main__":
         for res in residues:
             atom = res[0]
 
+            # outchar = 3 letter AA code if a valid AA
+            # or is equal to "NULL"
+            outchar = validateAA(atom[resname_num])
+
+            # if NULL continue
+            if outchar == "NULL":
+                sys.stderr.write("Found non-amino acid residue in PDB file... [" + str(atom[resname_num]) + "]\n")
+                continue
+
             if args.three and not args.absinth:
                 if count%20 == 0 and not count == 0:
                     print ""
 
-                sys.stdout.write(atom[resname_num])
+                sys.stdout.write(outchar)
                 sys.stdout.write(" ")
             elif args.absinth:
-                sys.stdout.write(atom[resname_num])
+                sys.stdout.write(outchar)
                 sys.stdout.write("\n")
             else:
                 if count%50 == 0 and not count == 0:
                     print ""
 
-                sys.stdout.write(three2one(atom[resname_num]))
+                sys.stdout.write(three2one(outchar))
+
                 if count%10 == 0 and not count%50 == 0 and not count == 0:
                     sys.stdout.write(" ")
 
